@@ -114,11 +114,12 @@ ORDER BY
     t.table_name ASC;
 
 -- Output
-
-
-
-
-
+ table_name | total_size | index_size | table_size | num_rows 
+------------+------------+------------+------------+----------
+ account    | 32 kB      | 16 kB      | 8192 bytes |      100
+ post       | 28 MB      | 2208 kB    | 26 MB      |       -1
+ thread     | 168 kB     | 40 kB      | 96 kB      |     1000
+ words      | 10024 kB   | 0 bytes    | 9984 kB    |   235976
 ```
 
 
@@ -131,9 +132,16 @@ WHERE account_id = 1
 ;
 
 -- Output
-
-
-
+                                                     QUERY PLAN
+---------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..6237.16 rows=1667 width=53) (actual time=0.951..39.955 rows=532 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on post  (cost=0.00..5070.46 rows=695 width=53) (actual time=0.091..8.517 rows=177 loops=3)
+         Filter: (account_id = 1)
+         Rows Removed by Filter: 33156
+ Planning Time: 0.218 ms
+ Execution Time: 40.040 ms
 ```
 
 ### Exercise 3 How many post have i made?
@@ -144,11 +152,19 @@ SELECT COUNT(*) FROM post
 WHERE account_id = 1;
 
 -- Output
-
-
-
-
-
+                                                           QUERY PLAN
+---------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=6072.41..6072.42 rows=1 width=8) (actual time=41.470..47.371 rows=1 loops=1)
+   ->  Gather  (cost=6072.20..6072.41 rows=2 width=8) (actual time=32.791..47.355 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=5072.20..5072.21 rows=1 width=8) (actual time=10.723..10.723 rows=1 loops=3)
+               ->  Parallel Seq Scan on post  (cost=0.00..5070.46 rows=695 width=0) (actual time=0.087..10.681 rows=177 loops=3)
+                     Filter: (account_id = 1)
+                     Rows Removed by Filter: 33156
+ Planning Time: 0.152 ms
+ Execution Time: 47.438 ms
+(10 rows)
 ```
 
 ### Exercise 4 See all current posts for a Thread
@@ -161,8 +177,14 @@ WHERE thread_id = 1
 AND visible = TRUE;
 
 -- Output
-
-
+                                              QUERY PLAN
+------------------------------------------------------------------------------------------------------
+ Seq Scan on post  (cost=0.00..4584.00 rows=89 width=232) (actual time=1.300..23.241 rows=32 loops=1)
+   Filter: (visible AND (thread_id = 1))
+   Rows Removed by Filter: 99968
+ Planning Time: 0.392 ms
+ Execution Time: 23.279 ms
+(5 rows)
 ```
 
 ### Exercise 5 How many posts have i made to a Thread?
@@ -175,9 +197,15 @@ FROM post
 WHERE thread_id = 1 AND visible = TRUE AND account_id = 1;
 
 -- Output
- 
- 
-
+                                               QUERY PLAN
+---------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=4834.00..4834.01 rows=1 width=8) (actual time=25.095..25.097 rows=1 loops=1)
+   ->  Seq Scan on post  (cost=0.00..4834.00 rows=1 width=0) (actual time=25.088..25.089 rows=0 loops=1)
+         Filter: (visible AND (thread_id = 1) AND (account_id = 1))
+         Rows Removed by Filter: 100000
+ Planning Time: 0.184 ms
+ Execution Time: 25.153 ms
+(6 rows)
 ```
 
 ### Exercise 6 See all current posts for a Thread for this month, in order
@@ -191,10 +219,22 @@ WHERE thread_id = 1 AND visible = TRUE AND created > NOW() - '1 month'::interval
 ORDER BY created;
 
 -- Output
-
-
-
-
+                                                       QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------
+ Gather Merge  (cost=5167.37..5167.60 rows=2 width=232) (actual time=36.154..41.137 rows=1 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Sort  (cost=4167.34..4167.35 rows=1 width=232) (actual time=7.862..7.863 rows=0 loops=3)
+         Sort Key: created
+         Sort Method: quicksort  Memory: 25kB
+         Worker 0:  Sort Method: quicksort  Memory: 25kB
+         Worker 1:  Sort Method: quicksort  Memory: 25kB
+         ->  Parallel Seq Scan on post  (cost=0.00..4167.33 rows=1 width=232) (actual time=3.886..7.753 rows=0 loops=3)
+               Filter: (visible AND (thread_id = 1) AND (created > (now() - '1 mon'::interval)))
+               Rows Removed by Filter: 33333
+ Planning Time: 0.292 ms
+ Execution Time: 41.206 ms
+(13 rows)
 ```
 
 
